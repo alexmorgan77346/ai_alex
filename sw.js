@@ -1,5 +1,5 @@
 const CACHE_NAME = 'ai-alex-v1.0.0';
-const FONT_CACHE = 'ai-alex-fonts-v1';
+const FONT_CACHE = 'ai-alex-fonts-v2';
 const APP_SHELL = ['/', '/index.html', '/manifest.json', '/favicon.ico',
   '/icons/icon-192x192.png', '/icons/icon-512x512.png', '/icons/apple-touch-icon.png'];
 
