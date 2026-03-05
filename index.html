@@ -4,17 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Alex – Personal Assistant</title>
-<meta name="theme-color" content="#050a14">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="AI Alex">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/x-icon" href="favicon.ico">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32x32.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
-
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -690,7 +679,7 @@
 
   <!-- TOP BAR -->
   <header id="topbar">
-    <div class="logo" style="display:flex;align-items:center;gap:10px;"><img src="icons/icon-48x48.png" style="width:28px;height:28px;border-radius:50%;" onerror="this.style.display='none'"> AI ALEX</div>
+    <div class="logo">AI ALEX</div>
     <div class="status-dot"></div>
     <span class="status-text" id="status-text">ONLINE · READY</span>
     <nav class="top-nav">
@@ -1499,9 +1488,8 @@ function updateStats() {
   const streakDays = state.habits.length ? Math.max(...state.habits.map(h => h.days.length), 0) : 0;
   document.getElementById('stat-streak').textContent = `${streakDays} days 🔥`;
 }
-</script>
 
-// PWA Service Worker
+// ──────────── PWA: SERVICE WORKER ────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')
@@ -1509,35 +1497,65 @@ if ('serviceWorker' in navigator) {
       .catch(e => console.log('[SW] Failed:', e));
   });
 }
-// Install prompt
-let deferredPrompt = null;
+
+// ──────────── PWA: INSTALL PROMPT ────────────
+let _deferredPrompt = null;
+
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
-  deferredPrompt = e;
+  _deferredPrompt = e;
   if (!localStorage.getItem('ax_install_dismissed')) {
-    setTimeout(() => {
-      const banner = document.createElement('div');
-      banner.id = 'install-banner';
-      banner.innerHTML = `
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <span style="flex:1;min-width:180px;">📲 Install <strong>AI Alex</strong> on your device for the best experience!</span>
-          <div style="display:flex;gap:8px;">
-            <button onclick="this.closest('#install-banner').remove();localStorage.setItem('ax_install_dismissed','1')"
-              style="padding:7px 14px;background:none;border:1px solid rgba(0,212,255,0.3);border-radius:7px;color:#4a7a9b;cursor:pointer;font-size:13px;">Later</button>
-            <button onclick="installPWA()"
-              style="padding:7px 16px;background:linear-gradient(135deg,#00d4ff,#7b2fff);border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">Install</button>
-          </div>
-        </div>`;
-      banner.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0a1628;border:1px solid rgba(0,212,255,0.4);border-radius:14px;padding:16px 20px;z-index:999;max-width:420px;width:calc(100% - 32px);box-shadow:0 8px 32px rgba(0,0,0,0.5);font-family:Rajdhani,sans-serif;font-size:14px;color:#c8e8ff;';
-      document.body.appendChild(banner);
-    }, 4000);
+    setTimeout(showInstallBanner, 4000);
   }
 });
-function installPWA() {
-  document.getElementById('install-banner')?.remove();
-  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
-}
-window.addEventListener('appinstalled', () => { console.log('AI Alex installed!'); });
 
+function showInstallBanner() {
+  if (document.getElementById('pwa-install-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'pwa-install-banner';
+  banner.style.cssText = [
+    'position:fixed', 'bottom:80px', 'left:50%', 'transform:translateX(-50%)',
+    'background:#0a1628', 'border:1px solid rgba(0,212,255,0.4)', 'border-radius:14px',
+    'padding:16px 20px', 'z-index:9999', 'max-width:420px', 'width:calc(100% - 32px)',
+    'box-shadow:0 8px 32px rgba(0,0,0,0.6)', 'font-family:Rajdhani,sans-serif',
+    'font-size:14px', 'color:#c8e8ff', 'animation:msgIn 0.3s ease-out'
+  ].join(';');
+  banner.innerHTML = [
+    '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">',
+    '<span style="flex:1;min-width:180px;">📲 Install <strong>AI Alex</strong> on your device for offline use!</span>',
+    '<div style="display:flex;gap:8px;">',
+    '<button id="pwa-later-btn" style="padding:7px 14px;background:none;border:1px solid rgba(0,212,255,0.3);border-radius:7px;color:#4a7a9b;cursor:pointer;font-size:13px;">Later</button>',
+    '<button id="pwa-install-btn" style="padding:7px 16px;background:linear-gradient(135deg,#00d4ff,#7b2fff);border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">Install</button>',
+    '</div></div>'
+  ].join('');
+  document.body.appendChild(banner);
+
+  document.getElementById('pwa-later-btn').addEventListener('click', dismissInstallBanner);
+  document.getElementById('pwa-install-btn').addEventListener('click', triggerInstall);
+}
+
+function dismissInstallBanner() {
+  const el = document.getElementById('pwa-install-banner');
+  if (el) el.remove();
+  localStorage.setItem('ax_install_dismissed', '1');
+}
+
+function triggerInstall() {
+  dismissInstallBanner();
+  if (_deferredPrompt) {
+    _deferredPrompt.prompt();
+    _deferredPrompt.userChoice.then(result => {
+      if (result.outcome === 'accepted') console.log('PWA installed');
+      _deferredPrompt = null;
+    });
+  }
+}
+
+window.addEventListener('appinstalled', () => {
+  dismissInstallBanner();
+  console.log('AI Alex installed successfully!');
+});
+
+</script>
 </body>
 </html>
